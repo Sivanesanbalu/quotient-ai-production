@@ -34,7 +34,7 @@ if(area==='suppliers'){
 }
 if(area==='quotes'){
  if(method==='GET'&&!id)return json({quotes:await sql`SELECT * FROM quotes WHERE account_id=${u.id} ORDER BY created_at DESC`});
- if(method==='POST'&&!id){const b=await body(req),amount=Number(b.amount),notes=String(b.notes||'');if(!uuid(b.rfq_id)||!uuid(b.supplier_id)||!Number.isFinite(amount)||amount<0||Math.round(amount*100)!==amount*100||notes.length>1000)return error('Invalid quotation');const [r]=await sql`INSERT INTO quotes(account_id,rfq_id,supplier_id,amount,notes) SELECT ${u.id},r.id,s.id,${amount},${notes} FROM rfqs r JOIN suppliers s ON s.id=${b.supplier_id} AND s.account_id=${u.id} WHERE r.id=${b.rfq_id} AND r.account_id=${u.id} RETURNING *`;return r?json({quote:r},201):error('RFQ or supplier not found',404)}
+ if(method==='POST'&&!id){const b=await body(req),amount=Number(b.amount),notes=String(b.notes||'');if(!uuid(b.rfq_id)||!uuid(b.supplier_id)||(typeof b.amount!=='number'&&typeof b.amount!=='string')||b.amount===''||!Number.isFinite(amount)||amount<0||amount>999999999999.99||!Number.isInteger(Math.round(amount*100))||Math.abs(Math.round(amount*100)-amount*100)>1e-7||notes.length>1000)return error('Invalid quotation');const [r]=await sql`INSERT INTO quotes(account_id,rfq_id,supplier_id,amount,notes) SELECT ${u.id},r.id,s.id,${amount},${notes} FROM rfqs r JOIN suppliers s ON s.id=${b.supplier_id} AND s.account_id=${u.id} WHERE r.id=${b.rfq_id} AND r.account_id=${u.id} RETURNING *`;return r?json({quote:r},201):error('RFQ or supplier not found',404)}
  if(method==='DELETE'&&uuid(id)){const r=await sql`DELETE FROM quotes WHERE id=${id} AND account_id=${u.id} RETURNING id`;return r.length?json({ok:true}):error('Not found',404)}
 }
 return error('Not found',404)
