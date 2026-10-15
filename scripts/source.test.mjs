@@ -2,3 +2,5 @@ import test from 'node:test';import assert from 'node:assert/strict';import{read
 test('quote revisions require tenant ownership',()=>{assert.match(api,/method==='PATCH'&&uuid\(id\)/);assert.match(api,/UPDATE quotes SET amount=/);assert.match(api,/WHERE id=\$\{id\} AND account_id=\$\{u.id\}/)});
 
 test('exports are user-scoped and cache-disabled',()=>{assert.match(api,/area==='export'/);assert.match(api,/WHERE account_id=\$\{u.id\}/);assert.match(api,/text\/csv/);assert.match(api,/private, no-store/)});
+
+test('RFQ lifecycle API limits allowed statuses and ownership',()=>{assert.match(api,/open','reviewing','awarded','closed/);assert.match(api,/UPDATE rfqs SET status=/);assert.match(api,/WHERE id=\$\{id\} AND account_id=\$\{u.id\}/)});
