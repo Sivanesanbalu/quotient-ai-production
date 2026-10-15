@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS accounts (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), email text NOT NULL UNIQUE, password_hash text NOT NULL, name text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS sessions (token_hash text PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS rfqs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, product text NOT NULL, quantity integer NOT NULL CHECK(quantity>0), unit text NOT NULL DEFAULT 'pcs', spec text NOT NULL DEFAULT '', status text NOT NULL DEFAULT 'open', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS suppliers (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, name text NOT NULL, email text NOT NULL DEFAULT '', phone text NOT NULL DEFAULT '', website text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS quotes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, rfq_id uuid NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE, supplier_id uuid NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE, amount numeric(14,2) NOT NULL CHECK(amount>=0), notes text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS rfqs_account_idx ON rfqs(account_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS suppliers_account_idx ON suppliers(account_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS quotes_account_idx ON quotes(account_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS sessions_account_idx ON sessions(account_id,expires_at);
+CREATE TABLE IF NOT EXISTS auth_rate_limits (key text PRIMARY KEY, hits integer NOT NULL DEFAULT 0, reset_at timestamptz NOT NULL);
+CREATE INDEX IF NOT EXISTS auth_rate_limits_expiry_idx ON auth_rate_limits(reset_at);
