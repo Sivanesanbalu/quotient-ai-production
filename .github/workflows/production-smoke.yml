@@ -21,7 +21,7 @@ jobs:
         env:
           TARGET_URL: ${{ inputs.target_url }}
         run: |
-          node -e "const u=new URL(process.env.TARGET_URL); if(u.protocol!=='https:' || !(['quotient-ai-fullstack.vercel.app'].includes(u.hostname) || u.hostname.endsWith('.vercel.app')))process.exit(1)"
+          node -e "const u=new URL(process.env.TARGET_URL); if(u.protocol!=='https:' || u.hostname!=='quotient-ai-fullstack.vercel.app')process.exit(1)"
       - name: Read-only production smoke check
         env:
           SMOKE_URL: ${{ inputs.target_url }}
