@@ -14,7 +14,13 @@ try {
   if (!response.ok || body.ok !== true) {
     throw new Error('Health check failed: HTTP '+response.status+'. Database may be missing, offline, or schema incomplete.');
   }
-  console.log('Health endpoint passed; authentication and data mutation E2E tests remain unverified.');
+  const protectedPaths=['/api/auth/me','/api/rfqs','/api/suppliers','/api/quotes','/api/export'];
+  for(const path of protectedPaths){
+    const endpoint=new URL(path,url);
+    const result=await fetch(endpoint,{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(10000)});
+    if(result.status!==401)throw new Error('Anonymous endpoint did not return HTTP 401: '+path+' (received '+result.status+')');
+  }
+  console.log('Health endpoint and anonymous access guards passed; authenticated write-path E2E tests remain unverified.');
 } catch (error) {
   console.error('Smoke test failed: '+error.message);
   process.exitCode = 1;
