@@ -4,3 +4,5 @@ test('quote revisions require tenant ownership',()=>{assert.match(api,/method===
 test('exports are user-scoped and cache-disabled',()=>{assert.match(api,/area==='export'/);assert.match(api,/WHERE account_id=\$\{u.id\}/);assert.match(api,/text\/csv/);assert.match(api,/private, no-store/)});
 
 test('RFQ lifecycle API limits allowed statuses and ownership',()=>{assert.match(api,/open','reviewing','awarded','closed/);assert.match(api,/UPDATE rfqs SET status=/);assert.match(api,/WHERE id=\$\{id\} AND account_id=\$\{u.id\}/)});
+
+test('quote comparison scopes RFQ and supplier to account',()=>{assert.match(api,/action==='compare'/);assert.match(api,/potentialSavings:/);assert.match(api,/q\.account_id=\$\{u.id\}/);assert.match(api,/s\.account_id=\$\{u.id\}/)});
