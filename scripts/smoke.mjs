@@ -1,0 +1,1 @@
+const base=process.env.SMOKE_URL;if(!base)throw new Error('SMOKE_URL required');const r=await fetch(new URL('/api/health',base),{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error('Health check failed');console.log('Health passed; full end-to-end smoke tests not yet implemented');
