@@ -21,6 +21,17 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund --prefer-online
+      - name: Verify npm lockfile generation
+        run: |
+          test -s package-lock.json
+          node -e "const p=require('./package-lock.json'); if(p.lockfileVersion<3 || !p.packages?.['']) process.exit(1)"
+      - name: Preserve generated lockfile for reproducible commits
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotientai-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Source preflight
         run: npm run preflight
       - name: Security source checks
