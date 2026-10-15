@@ -17,7 +17,7 @@
     "diagnose:deployment": "node scripts/deployment-diagnostics.mjs"
   },
   "dependencies": {
-    "next": "^15.5.18",
+    "next": "15.5.28",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "postgres": "^3.4.7"
