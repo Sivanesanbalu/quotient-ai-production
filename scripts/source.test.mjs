@@ -6,3 +6,5 @@ test('exports are user-scoped and cache-disabled',()=>{assert.match(api,/area===
 test('RFQ lifecycle API limits allowed statuses and ownership',()=>{assert.match(api,/open','reviewing','awarded','closed/);assert.match(api,/UPDATE rfqs SET status=/);assert.match(api,/WHERE id=\$\{id\} AND account_id=\$\{u.id\}/)});
 
 test('quote comparison scopes RFQ and supplier to account',()=>{assert.match(api,/action==='compare'/);assert.match(api,/potentialSavings:/);assert.match(api,/q\.account_id=\$\{u.id\}/);assert.match(api,/s\.account_id=\$\{u.id\}/)});
+
+test('missing database configuration returns service unavailable',()=>{assert.match(api,/!process\.env\.DATABASE_URL/);assert.match(api,/database not configured',503/)});
