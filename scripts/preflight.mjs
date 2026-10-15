@@ -1,0 +1,1 @@
+import assert from 'node:assert/strict';import{existsSync}from'node:fs';for(const p of ['package.json','app/page.tsx','app/layout.tsx','app/style.css','app/api/[[...route]]/route.ts','lib/db.ts','schema.sql'])assert.ok(existsSync(p),'Missing '+p);console.log('Source structure checks passed');
