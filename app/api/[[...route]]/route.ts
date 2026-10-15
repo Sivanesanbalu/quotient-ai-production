@@ -1,0 +1,45 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {randomBytes,scryptSync,timingSafeEqual,createHash} from 'node:crypto';
+import {db} from '../../../lib/db';
+export const runtime='nodejs';
+const digest=(x:string)=>createHash('sha256').update(x).digest('hex');
+const json=(data:any,status=200)=>NextResponse.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
+const error=(message:string,status=400)=>json({error:message},status);
+const uuid=(s:any)=>typeof s==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+const hashPwd=(p:string,s:string)=>s+':'+scryptSync(p,s,64).toString('hex');
+function verify(p:string,stored:string){const [salt,hex]=stored.split(':');if(!salt||!hex)return false;const a=Buffer.from(scryptSync(p,salt,64)),b=Buffer.from(hex,'hex');return a.length===b.length&&timingSafeEqual(a,b)}
+function setSession(res:NextResponse,token:string,age:number){res.cookies.set('qa_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:age});return res}
+async function user(req:NextRequest){const token=req.cookies.get('qa_session')?.value;if(!token)return null;const [row]=await db()`SELECT a.id,a.name,a.email FROM accounts a JOIN sessions s ON a.id=s.account_id WHERE s.token_hash=${digest(token)} AND s.expires_at>now()`;return row||null}
+async function body(req:NextRequest){if(!req.headers.get('content-type')?.toLowerCase().startsWith('application/json'))throw Object.assign(Error('JSON content type required'),{status:415});const read=req.body?.getReader();if(!read)throw Object.assign(Error('Missing JSON body'),{status:400});const chunks:Buffer[]=[];let total=0;try{while(true){const {done,value}=await read.read();if(done)break;total+=value.byteLength;if(total>16384)throw Object.assign(Error('Payload too large'),{status:413});chunks.push(Buffer.from(value))}}finally{read.releaseLock()}let obj;try{obj=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{throw Object.assign(Error('Invalid JSON'),{status:400})}if(!obj||typeof obj!=='object'||Array.isArray(obj))throw Object.assign(Error('Expected JSON object'),{status:400});return obj}
+async function limit(key:string){const [r]=await db()`INSERT INTO auth_rate_limits(key,hits,reset_at) VALUES(${digest(key)},1,now()+interval '15 minutes') ON CONFLICT(key) DO UPDATE SET hits=CASE WHEN auth_rate_limits.reset_at<now() THEN 1 ELSE auth_rate_limits.hits+1 END,reset_at=CASE WHEN auth_rate_limits.reset_at<now() THEN now()+interval '15 minutes' ELSE auth_rate_limits.reset_at END RETURNING hits`;return Number(r.hits)<=8}
+async function handler(req:NextRequest,method:string){try{
+if(method!=='GET'){const origin=req.headers.get('origin');if(origin&&origin!==req.nextUrl.origin)return error('Cross-origin request denied',403)}
+const [area,id,action]=req.nextUrl.pathname.split('/').slice(2);const sql=db();
+if(area==='health'&&method==='GET'){const [r]=await sql`SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('accounts','sessions','rfqs','suppliers','quotes','auth_rate_limits')`;return json({ok:Number(r.count)===6,database:Number(r.count)===6?'ready':'incomplete'},Number(r.count)===6?200:503)}
+if(area==='auth'&&id==='register'&&method==='POST'){const b=await body(req);const email=String(b.email||'').trim().toLowerCase(),name=String(b.name||'').trim(),password=String(b.password||'');if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||name.length>120||password.length<12||password.length>128)return error('Invalid name, email, or password (minimum 12 characters)');if(!await limit('register:'+email))return error('Too many attempts',429);const salt=randomBytes(16).toString('hex');let u;try{[u]=await sql`INSERT INTO accounts(email,name,password_hash) VALUES(${email},${name},${hashPwd(password,salt)}) RETURNING id,email,name`}catch(e:any){if(e.code==='23505')return error('Email already registered',409);throw e}const token=randomBytes(32).toString('hex');await sql`INSERT INTO sessions(token_hash,account_id,expires_at) VALUES(${digest(token)},${u.id},now()+interval '7 days')`;return setSession(json({user:u},201),token,604800)}
+if(area==='auth'&&id==='login'&&method==='POST'){const b=await body(req);const email=String(b.email||'').trim().toLowerCase(),password=String(b.password||'');if(email.length>254||!email||password.length>128||!password)return error('Invalid credentials',401);if(!await limit('login:'+email))return error('Too many attempts',429);const [u]=await sql`SELECT id,name,email,password_hash FROM accounts WHERE email=${email}`;if(!u||!verify(password,u.password_hash))return error('Invalid credentials',401);const token=randomBytes(32).toString('hex');await sql`INSERT INTO sessions(token_hash,account_id,expires_at) VALUES(${digest(token)},${u.id},now()+interval '7 days')`;return setSession(json({user:{id:u.id,name:u.name,email:u.email}}),token,604800)}
+if(area==='auth'&&id==='logout'&&method==='POST'){const token=req.cookies.get('qa_session')?.value;if(token)await sql`DELETE FROM sessions WHERE token_hash=${digest(token)}`;return setSession(json({ok:true}),'',0)}
+const u=await user(req);if(!u)return error('Unauthorized',401);
+if(area==='auth'&&id==='me'&&method==='GET')return json({user:u});
+if(area==='rfqs'){
+ if(method==='GET'&&!id)return json({rfqs:await sql`SELECT * FROM rfqs WHERE account_id=${u.id} ORDER BY created_at DESC`});
+ if(method==='POST'&&!id){const b=await body(req),product=String(b.product||'').trim(),quantity=Number(b.quantity),unit=String(b.unit||'pcs'),spec=String(b.spec||'');if(!product||product.length>120||!Number.isSafeInteger(quantity)||quantity<1||unit.length>20||spec.length>1000)return error('Invalid request');const [r]=await sql`INSERT INTO rfqs(account_id,product,quantity,unit,spec) VALUES(${u.id},${product},${quantity},${unit},${spec}) RETURNING *`;return json({rfq:r},201)}
+ if(method==='PATCH'&&uuid(id)){const b=await body(req);if(!['open','reviewing','awarded','closed'].includes(b.status))return error('Invalid status');const [r]=await sql`UPDATE rfqs SET status=${b.status} WHERE id=${id} AND account_id=${u.id} RETURNING *`;return r?json({rfq:r}):error('Not found',404)}
+ if(method==='DELETE'&&uuid(id)){const r=await sql`DELETE FROM rfqs WHERE id=${id} AND account_id=${u.id} RETURNING id`;return r.length?json({ok:true}):error('Not found',404)}
+}
+if(area==='suppliers'){
+ if(method==='GET'&&!id)return json({suppliers:await sql`SELECT * FROM suppliers WHERE account_id=${u.id} ORDER BY created_at DESC`});
+ if(method==='POST'&&!id){const b=await body(req),name=String(b.name||'').trim(),email=String(b.email||''),phone=String(b.phone||''),website=String(b.website||'');if(!name||name.length>120||email.length>254||phone.length>30||website.length>300||website&&!/^https?:\/\//i.test(website))return error('Invalid supplier');const [r]=await sql`INSERT INTO suppliers(account_id,name,email,phone,website) VALUES(${u.id},${name},${email},${phone},${website}) RETURNING *`;return json({supplier:r},201)}
+ if(method==='DELETE'&&uuid(id)){const r=await sql`DELETE FROM suppliers WHERE id=${id} AND account_id=${u.id} RETURNING id`;return r.length?json({ok:true}):error('Not found',404)}
+}
+if(area==='quotes'){
+ if(method==='GET'&&!id)return json({quotes:await sql`SELECT * FROM quotes WHERE account_id=${u.id} ORDER BY created_at DESC`});
+ if(method==='POST'&&!id){const b=await body(req),amount=Number(b.amount),notes=String(b.notes||'');if(!uuid(b.rfq_id)||!uuid(b.supplier_id)||!Number.isFinite(amount)||amount<0||Math.round(amount*100)!==amount*100||notes.length>1000)return error('Invalid quotation');const [r]=await sql`INSERT INTO quotes(account_id,rfq_id,supplier_id,amount,notes) SELECT ${u.id},r.id,s.id,${amount},${notes} FROM rfqs r JOIN suppliers s ON s.id=${b.supplier_id} AND s.account_id=${u.id} WHERE r.id=${b.rfq_id} AND r.account_id=${u.id} RETURNING *`;return r?json({quote:r},201):error('RFQ or supplier not found',404)}
+ if(method==='DELETE'&&uuid(id)){const r=await sql`DELETE FROM quotes WHERE id=${id} AND account_id=${u.id} RETURNING id`;return r.length?json({ok:true}):error('Not found',404)}
+}
+return error('Not found',404)
+}catch(e:any){if(e?.status)return error(e.message,e.status);console.error('API error',e?.message||e);return error('Internal server error',500)}}
+export const GET=(req:NextRequest)=>handler(req,'GET');
+export const POST=(req:NextRequest)=>handler(req,'POST');
+export const PATCH=(req:NextRequest)=>handler(req,'PATCH');
+export const DELETE=(req:NextRequest)=>handler(req,'DELETE');
