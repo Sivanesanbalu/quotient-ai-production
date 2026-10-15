@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -21,6 +22,13 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund --prefer-online
+      - name: Report lockfile tracking status
+        run: |
+          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            echo 'Lockfile is committed to Git.'
+          else
+            echo '::warning::package-lock.json is generated in CI but not committed. Download the artifact and commit it to enable reproducible npm ci builds.'
+          fi
       - name: Verify npm lockfile generation
         run: |
           test -s package-lock.json
@@ -38,5 +46,7 @@ jobs:
         run: npm run release:check
       - name: Unit and regression tests
         run: npm run test:source
+      - name: TypeScript validation
+        run: npx tsc --noEmit
       - name: Production build
         run: npm run build
