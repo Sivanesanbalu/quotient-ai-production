@@ -10,7 +10,22 @@ concurrency:
   group: quotientai-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  source-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source preflight
+        run: npm run preflight
+      - name: Static security checks
+        run: npm run release:check
+      - name: Node.js regression tests
+        run: npm run test:source
   verify:
+    needs: source-tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
