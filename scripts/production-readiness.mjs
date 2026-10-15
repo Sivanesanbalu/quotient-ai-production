@@ -11,6 +11,21 @@ for (const path of ['app/page.tsx', 'app/api/[[...route]]/route.ts', 'lib/db.ts'
   if (!existsSync(path)) failures.push('Missing production source: ' + path);
 }
 
+
+if (!process.env.VERCEL && process.env.NODE_ENV === 'production') {
+  console.warn('[INFO] Production mode detected outside Vercel.');
+}
+if (process.env.DATABASE_URL) {
+  try {
+    const parsed = new URL(process.env.DATABASE_URL);
+    if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) failures.push('DATABASE_URL must use PostgreSQL');
+    if (!parsed.hostname) failures.push('DATABASE_URL hostname missing');
+    if (parsed.searchParams.get('sslmode') === 'disable') failures.push('DATABASE_URL must not disable SSL');
+  } catch {
+    failures.push('DATABASE_URL is malformed');
+  }
+}
+
 if (failures.length) {
   for (const failure of failures) console.error('[BLOCKED] ' + failure);
   process.exitCode = 1;
