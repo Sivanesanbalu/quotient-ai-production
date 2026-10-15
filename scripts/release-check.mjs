@@ -1,0 +1,1 @@
+import assert from 'node:assert/strict';import{readFileSync}from'node:fs';const api=readFileSync('app/api/[[...route]]/route.ts','utf8');for(const s of ['httpOnly:true','sameSite:',"account_id=",'timingSafeEqual','scryptSync','auth_rate_limits'])assert.ok(api.includes(s),'Security check missing: '+s);console.log('Static security checks passed (not a runtime audit)');
