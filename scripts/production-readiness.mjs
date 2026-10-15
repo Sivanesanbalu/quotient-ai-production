@@ -1,0 +1,1 @@
+import {existsSync}from 'node:fs';for(const k of ['DATABASE_URL'])if(!process.env[k])console.error('Missing '+k);if(!existsSync('package-lock.json'))console.error('Missing lockfile; use npm install to generate one before reproducible CI');
