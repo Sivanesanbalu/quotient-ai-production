@@ -1,0 +1,31 @@
+name: QuotientAI CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: quotientai-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --prefer-online
+      - name: Source preflight
+        run: npm run preflight
+      - name: Security source checks
+        run: npm run release:check
+      - name: Unit and regression tests
+        run: npm run test:source
+      - name: Production build
+        run: npm run build
