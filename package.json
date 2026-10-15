@@ -14,7 +14,8 @@
     "test:smoke": "node scripts/smoke.mjs",
     "readiness": "node scripts/production-readiness.mjs",
     "release:gate": "node scripts/release-gate.mjs",
-    "diagnose:deployment": "node scripts/deployment-diagnostics.mjs"
+    "diagnose:deployment": "node scripts/deployment-diagnostics.mjs",
+    "db:check": "node scripts/check-database.mjs"
   },
   "dependencies": {
     "next": "15.5.28",
