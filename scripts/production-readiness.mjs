@@ -6,6 +6,16 @@ if (!process.env.DATABASE_URL) {
 }
 if (!existsSync('package-lock.json')) {
   failures.push('package-lock.json missing: generate and commit a dependency lockfile');
+} else {
+  try {
+    const { readFileSync } = await import('node:fs');
+    const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+    if (lock.lockfileVersion !== 3 || !lock.packages?.[''] || Object.keys(lock.packages).length < 2) {
+      failures.push('package-lock.json invalid or empty: commit a genuine npm-generated lockfile');
+    }
+  } catch {
+    failures.push('package-lock.json cannot be parsed: regenerate with npm');
+  }
 }
 for (const path of ['app/page.tsx', 'app/api/[[...route]]/route.ts', 'lib/db.ts', 'schema.sql']) {
   if (!existsSync(path)) failures.push('Missing production source: ' + path);
