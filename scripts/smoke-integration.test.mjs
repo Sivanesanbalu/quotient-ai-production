@@ -9,7 +9,11 @@ async function exercise({healthy=true,anonymousStatus=401}={}){
     routes.push(req.url);
     res.setHeader('content-type','application/json');
     res.setHeader('cache-control','private, no-store');
-    if(req.url==='/api/health'){
+    if(req.url==='/'){
+      res.setHeader('content-type','text/html; charset=utf-8');
+      res.statusCode=200;
+      res.end('<html><body>QuotientAI workspace</body></html>');
+    }else if(req.url==='/api/health'){
       res.statusCode=healthy?200:503;
       res.end(JSON.stringify({ok:healthy}));
     }else{
@@ -36,7 +40,7 @@ async function exercise({healthy=true,anonymousStatus=401}={}){
 test('healthy endpoint with protected routes passes without writes',async()=>{
   const r=await exercise();
   assert.equal(r.status,0,r.stderr);
-  for(const path of ['/api/health','/api/auth/me','/api/rfqs','/api/suppliers','/api/quotes','/api/export'])assert.ok(r.routes.includes(path),path);
+  for(const path of ['/api/health','/api/auth/me','/api/rfqs','/api/suppliers','/api/quotes','/api/export','/'])assert.ok(r.routes.includes(path),path);
   assert.match(r.stdout,/guards passed/);
 });
 
