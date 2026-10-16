@@ -1,5 +1,10 @@
 name: QuotientAI Browser E2E
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/browser-workflow.spec.mjs'
+      - '.github/workflows/browser-e2e.yml'
   workflow_dispatch:
 permissions:
   contents: read
