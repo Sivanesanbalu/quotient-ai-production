@@ -38,5 +38,34 @@ for(const path of ['/api/rfqs','/api/suppliers','/api/quotes']){
 const cross=await request('/api/quotes',{method:'POST',cookie:b,data:{rfq_id:rfqId,supplier_id:supplierId,amount:5}});
 assert.equal(cross.status,404,'Cross-tenant quote creation must fail');
 const unauthorized=await request('/api/rfqs');assert.equal(unauthorized.status,401);
+
+const me=await request('/api/auth/me',{cookie:a});
+assert.equal(me.status,200);
+const rfqUpdate=await request(`/api/rfqs/${rfqId}`,{method:'PATCH',cookie:a,data:{status:'reviewing'}});
+assert.equal(rfqUpdate.status,200);
+assert.equal(rfqUpdate.body.rfq.status,'reviewing');
+const forbiddenRfqUpdate=await request(`/api/rfqs/${rfqId}`,{method:'PATCH',cookie:b,data:{status:'closed'}});
+assert.equal(forbiddenRfqUpdate.status,404);
+const quoteId=quote.body.quote.id;
+const quoteUpdate=await request(`/api/quotes/${quoteId}`,{method:'PATCH',cookie:a,data:{amount:125.50,notes:'Updated synthetic quote'}});
+assert.equal(quoteUpdate.status,200);
+assert.equal(Number(quoteUpdate.body.quote.amount),125.5);
+const forbiddenQuoteUpdate=await request(`/api/quotes/${quoteId}`,{method:'PATCH',cookie:b,data:{amount:1}});
+assert.equal(forbiddenQuoteUpdate.status,404);
+const invalidRfq=await request('/api/rfqs',{method:'POST',cookie:a,data:{product:'Invalid',quantity:0}});
+assert.equal(invalidRfq.status,400);
+const invalidQuote=await request('/api/quotes',{method:'POST',cookie:a,data:{rfq_id:rfqId,supplier_id:supplierId,amount:-1}});
+assert.equal(invalidQuote.status,400);
+for(const [path,owner] of [[`/api/quotes/${quoteId}`,a],[`/api/suppliers/${supplierId}`,a],[`/api/rfqs/${rfqId}`,a]]){
+ const forbidden=await request(path,{method:'DELETE',cookie:b});
+ assert.equal(forbidden.status,404,'Cross-tenant delete must fail');
+ const removed=await request(path,{method:'DELETE',cookie:owner});
+ assert.equal(removed.status,200,'Owner delete must succeed');
+}
+const logout=await request('/api/auth/logout',{method:'POST',cookie:a});
+assert.equal(logout.status,200);
+const afterLogout=await request('/api/auth/me',{cookie:a});
+assert.equal(afterLogout.status,401,'Logout must invalidate the session');
+console.log('PASS: PATCH/DELETE tenant ownership, invalid input, and logout invalidation.');
 console.log('PASS: local disposable DB signup/login, RFQ, supplier, quote, comparison, CSV, tenant isolation, anonymous guard.');
 console.log('Synthetic fixtures intentionally remain in disposable local database; discard database after testing.');
