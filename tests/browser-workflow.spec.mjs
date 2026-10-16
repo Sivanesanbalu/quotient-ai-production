@@ -28,8 +28,11 @@ test('disposable browser signup, RFQ, supplier, quote and logout',async({page})=
   await page.getByRole('spinbutton',{name:'Total quoted amount (₹)'}).fill('125.50');
   await page.getByRole('button',{name:'Save quotation'}).click();
   await expect(page.getByText(/₹125\.5/)).toBeVisible();
+  const logoutResponse=page.waitForResponse(response=>response.url().endsWith('/api/auth/logout')&&response.request().method()==='POST');
   await page.getByRole('button',{name:'Log out'}).click();
-  await expect(page.getByRole('heading',{name:'Welcome back'})).toBeVisible();
+  const loggedOut=await logoutResponse;
+  expect(loggedOut.status(),await loggedOut.text()).toBe(200);
+  await expect(page.getByRole('heading',{name:'Welcome back'})).toBeVisible({timeout:10000});
 });
 
 // Browser flow is intentionally exercised against an isolated CI PostgreSQL service.
