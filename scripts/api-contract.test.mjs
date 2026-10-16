@@ -23,7 +23,7 @@ test('quote creation validates ownership of both linked records',()=>{
 test('CSV export neutralizes formula injection',()=>{
   assert.match(source,/if\(\/\^\[\\s\]\*\[=\+@-\]\/\.test\(x\)\)x=/);
 });
-test('auth responses never expose password hashes',()=>{
+test('auth response projections omit password hashes',()=>{
   assert.match(source,/RETURNING id,email,name/);
   assert.match(source,/user:\{id:u\.id,name:u\.name,email:u\.email\}/);
 });
