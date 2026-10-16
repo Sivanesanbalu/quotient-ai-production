@@ -8,6 +8,7 @@ async function exercise({healthy=true,anonymousStatus=401}={}){
   const server=createServer((req,res)=>{
     routes.push(req.url);
     res.setHeader('content-type','application/json');
+    res.setHeader('cache-control','private, no-store');
     if(req.url==='/api/health'){
       res.statusCode=healthy?200:503;
       res.end(JSON.stringify({ok:healthy}));
@@ -19,7 +20,7 @@ async function exercise({healthy=true,anonymousStatus=401}={}){
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const url='http://127.0.0.1:'+server.address().port;
   try{
-    const child=spawn(process.execPath,['scripts/smoke.mjs'],{env:{...process.env,SMOKE_URL:url},stdio:['ignore','pipe','pipe']});
+    const child=spawn(process.execPath,['scripts/smoke.mjs'],{env:{...process.env,SMOKE_URL:url,SMOKE_ALLOW_HTTP_LOOPBACK:'1'},stdio:['ignore','pipe','pipe']});
     let stdout='',stderr='';
     for(const stream of [child.stdout,child.stderr]){
       stream.setEncoding('utf8');
