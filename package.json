@@ -15,7 +15,8 @@
     "readiness": "node scripts/production-readiness.mjs",
     "release:gate": "node scripts/release-gate.mjs",
     "diagnose:deployment": "node scripts/deployment-diagnostics.mjs",
-    "db:check": "node scripts/check-database.mjs"
+    "db:check": "node scripts/check-database.mjs",
+    "test:e2e:local": "node scripts/local-e2e.mjs"
   },
   "dependencies": {
     "next": "15.5.28",
