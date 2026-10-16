@@ -2,7 +2,7 @@
 const base = process.env.SMOKE_URL;
 if (!base) { console.error('SMOKE_URL is required'); process.exit(1); }
 let url;
-try { const origin = new URL(base); if (origin.protocol !== 'https:') throw new Error('HTTPS required'); url = new URL('/api/health', origin); }
+try { const origin = new URL(base); if (origin.protocol !== 'https:' && !(process.env.SMOKE_ALLOW_HTTP_LOOPBACK === '1' && origin.protocol === 'http:' && ['127.0.0.1','localhost','[::1]'].includes(origin.hostname))) throw new Error('HTTPS required (except explicit local test loopback)'); url = new URL('/api/health', origin); }
 catch { console.error('SMOKE_URL must be a valid HTTPS URL'); process.exit(1); }
 try {
   const response = await fetch(url, {cache:'no-store', signal:AbortSignal.timeout(10000), redirect:'manual'});
