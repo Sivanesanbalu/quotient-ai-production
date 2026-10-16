@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 const script = join(dirname(fileURLToPath(import.meta.url)), 'production-readiness.mjs');
 const required = ['app/page.tsx', 'app/api/[[...route]]/route.ts', 'lib/db.ts', 'schema.sql'];
 
-function check(lockfile) {
+function check(lockfile, databaseUrl = 'postgresql://test:test@localhost:5432/test?sslmode=require') {
   const dir = mkdtempSync(join(tmpdir(), 'quotient-readiness-'));
   try {
     for (const path of required) {
@@ -24,7 +24,7 @@ function check(lockfile) {
     return spawnSync(process.execPath, ['production-readiness.mjs'], {
       cwd: dir,
       encoding: 'utf8',
-      env: { ...process.env, DATABASE_URL: 'postgresql://test:test@localhost:5432/test?sslmode=require', NODE_ENV: 'test' }
+      env: { ...process.env, DATABASE_URL: databaseUrl, NODE_ENV: 'test' }
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -56,4 +56,23 @@ test('readiness accepts valid lockfile structure', () => {
   }));
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Static release prerequisites present/);
+});
+
+
+test('readiness rejects absent database configuration', () => {
+  const result = check(JSON.stringify({ lockfileVersion: 3, packages: { '': {}, 'node_modules/example': {} } }), '');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DATABASE_URL missing/);
+});
+
+test('readiness rejects disabled PostgreSQL TLS', () => {
+  const result = check(JSON.stringify({ lockfileVersion: 3, packages: { '': {}, 'node_modules/example': {} } }), 'postgresql://test:test@localhost:5432/test?sslmode=disable');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must not disable SSL/);
+});
+
+test('readiness rejects non-PostgreSQL URLs', () => {
+  const result = check(JSON.stringify({ lockfileVersion: 3, packages: { '': {}, 'node_modules/example': {} } }), 'mysql://test:test@localhost:3306/test');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must use PostgreSQL/);
 });
