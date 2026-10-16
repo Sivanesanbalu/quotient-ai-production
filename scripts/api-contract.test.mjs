@@ -7,8 +7,11 @@ const source=readFileSync(new URL('../app/api/[[...route]]/route.ts',import.meta
 test('all API JSON responses opt out of caching',()=>{
   assert.match(source,/const json=\(data:any,status=200\)=>NextResponse\.json\(data,\{status,headers:\{'Cache-Control':'private, no-store'\}\}\)/);
 });
-test('mutations reject mismatched Origin before route handling',()=>{
-  assert.match(source,/if\(method!=='GET'\)\{const origin=req\.headers\.get\('origin'\);if\(origin&&origin!==req\.nextUrl\.origin\)return error\('Cross-origin request denied',403\)/);
+test('mutations validate browser Origin against request hosts before route handling',()=>{
+  assert.match(source,/if\(method!=='GET'\)\{const origin=req\.headers\.get\('origin'\)/);
+  assert.match(source,/new URL\(origin\)/);
+  assert.match(source,/allowedHosts\.includes\(parsed\.host\)/);
+  assert.match(source,/return error\('Cross-origin request denied',403\)/);
 });
 test('session cookie has HttpOnly and SameSite Lax',()=>{
   assert.match(source,/res\.cookies\.set\('qa_session',token,\{httpOnly:true,secure:process\.env\.NODE_ENV==='production',sameSite:'lax'/);
