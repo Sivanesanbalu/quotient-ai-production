@@ -44,6 +44,9 @@ jobs:
           else
             echo '::warning::package-lock.json is generated in CI but not committed. Download the artifact and commit it to enable reproducible npm ci builds.'
           fi
+      - name: Validate readiness lockfile guard
+        run: |
+          node --input-type=module -e "import { readFileSync } from 'node:fs'; const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')); if (lock.lockfileVersion !== 3 || !lock.packages?.[''] || Object.keys(lock.packages).length < 2) process.exit(1)"
       - name: Verify npm lockfile generation
         run: |
           test -s package-lock.json
