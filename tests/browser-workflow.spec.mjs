@@ -3,7 +3,7 @@ import {randomUUID} from 'node:crypto';
 
 test('disposable browser signup, RFQ, supplier, quote and logout',async({page})=>{
   const email=`browser-${randomUUID()}@example.invalid`;
-  await page.goto('/');
+  await page.goto(process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3100');
   await page.getByRole('button',{name:'New here? Create account'}).click();
   await page.getByRole('textbox',{name:'Name'}).fill('Browser QA');
   await page.getByRole('textbox',{name:'Email'}).fill(email);
