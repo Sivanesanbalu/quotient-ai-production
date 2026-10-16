@@ -37,27 +37,15 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Report lockfile tracking status
-        run: |
-          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
-            echo 'Lockfile is committed to Git.'
-          else
-            echo '::warning::package-lock.json is generated in CI but not committed. Download the artifact and commit it to enable reproducible npm ci builds.'
-          fi
+      - name: Require committed dependency lockfile
+        run: git ls-files --error-unmatch package-lock.json
       - name: Validate readiness lockfile guard
         run: |
           node --input-type=module -e "import { readFileSync } from 'node:fs'; const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')); if (lock.lockfileVersion !== 3 || !lock.packages?.[''] || Object.keys(lock.packages).length < 2) process.exit(1)"
-      - name: Verify npm lockfile generation
+      - name: Verify npm lockfile integrity
         run: |
           test -s package-lock.json
           node -e "const p=require('./package-lock.json'); if(p.lockfileVersion<3 || !p.packages?.['']) process.exit(1)"
-      - name: Preserve generated lockfile for reproducible commits
-        uses: actions/upload-artifact@v4
-        with:
-          name: quotientai-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 7
       - name: Verify committed lockfile and dependency graph
         run: |
           git ls-files --error-unmatch package-lock.json
