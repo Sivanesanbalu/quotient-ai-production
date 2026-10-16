@@ -23,7 +23,11 @@ try {
     if (!result.headers.get('content-type')?.includes('application/json')) throw new Error('Protected endpoint returned non-JSON: '+path);
     if (!result.headers.get('cache-control')?.includes('no-store')) throw new Error('Protected endpoint missing no-store: '+path);
   }
-  console.log('Health endpoint and anonymous access guards passed; authenticated write-path E2E tests remain unverified.');
+  const homepage=await fetch(new URL('/',url),{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(10000)});
+  if(homepage.status!==200)throw new Error('Homepage failed: HTTP '+homepage.status);
+  const html=await homepage.text();
+  if(!html.includes('Quotient')||!html.includes('workspace'))throw new Error('Homepage missing expected application content');
+  console.log('PASS: production health, anonymous access guards, and homepage HTML. Authenticated E2E is verified separately in disposable CI PostgreSQL.');
 } catch (error) {
   console.error('Smoke test failed: '+error.message);
   process.exitCode = 1;
