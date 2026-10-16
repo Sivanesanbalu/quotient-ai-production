@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --prefer-online
+        run: npm ci --no-audit --no-fund
       - name: Report lockfile tracking status
         run: |
           if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
