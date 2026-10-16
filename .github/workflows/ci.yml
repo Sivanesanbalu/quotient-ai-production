@@ -58,6 +58,10 @@ jobs:
           path: package-lock.json
           if-no-files-found: error
           retention-days: 7
+      - name: Verify committed lockfile and dependency graph
+        run: |
+          git ls-files --error-unmatch package-lock.json
+          npm ls --depth=0
       - name: Source preflight
         run: npm run preflight
       - name: Security source checks
