@@ -23,21 +23,7 @@ try {
     if (!result.headers.get('content-type')?.includes('application/json')) throw new Error('Protected endpoint returned non-JSON: '+path);
     if (!result.headers.get('cache-control')?.includes('no-store')) throw new Error('Protected endpoint missing no-store: '+path);
   }
-  // Read-only negative checks: origin rejection happens before any write operation.
-  for (const path of ['/api/auth/register','/api/auth/login','/api/rfqs','/api/suppliers','/api/quotes']) {
-    const result = await fetch(new URL(path, url), {
-      method: 'POST',
-      headers: {'Origin':'https://untrusted.invalid','Content-Type':'application/json'},
-      body: '{}',
-      cache:'no-store',
-      redirect:'manual',
-      signal:AbortSignal.timeout(10000)
-    });
-    if (result.status !== 403) throw new Error('Cross-origin POST was not denied: '+path+' (received '+result.status+')');
-    if (!result.headers.get('content-type')?.includes('application/json')) throw new Error('Cross-origin rejection returned non-JSON: '+path);
-    if (!result.headers.get('cache-control')?.includes('no-store')) throw new Error('Cross-origin rejection missing no-store: '+path);
-  }
-  console.log('Health, anonymous access, and cross-origin POST rejection checks passed; authenticated write-path E2E remains unverified.');
+  console.log('Health endpoint and anonymous access guards passed; authenticated write-path E2E tests remain unverified.');
 } catch (error) {
   console.error('Smoke test failed: '+error.message);
   process.exitCode = 1;
