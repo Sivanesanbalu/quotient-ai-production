@@ -41,7 +41,7 @@ test('healthy endpoint with protected routes passes without writes',async()=>{
   const r=await exercise();
   assert.equal(r.status,0,r.stderr);
   for(const path of ['/api/health','/api/auth/me','/api/rfqs','/api/suppliers','/api/quotes','/api/export','/'])assert.ok(r.routes.includes(path),path);
-  assert.match(r.stdout,/guards passed/);
+  assert.match(r.stdout,/anonymous access guards, and homepage HTML/);
 });
 
 test('missing database health returns nonzero',async()=>{
