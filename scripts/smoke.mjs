@@ -2,8 +2,8 @@
 const base = process.env.SMOKE_URL;
 if (!base) { console.error('SMOKE_URL is required'); process.exit(1); }
 let url;
-try { url = new URL('/api/health', new URL(base)); }
-catch { console.error('SMOKE_URL must be a valid absolute URL'); process.exit(1); }
+try { const origin = new URL(base); if (origin.protocol !== 'https:') throw new Error('HTTPS required'); url = new URL('/api/health', origin); }
+catch { console.error('SMOKE_URL must be a valid HTTPS URL'); process.exit(1); }
 try {
   const response = await fetch(url, {cache:'no-store', signal:AbortSignal.timeout(10000), redirect:'manual'});
   const type = response.headers.get('content-type') || '';
@@ -11,6 +11,7 @@ try {
     throw new Error('Expected JSON health response; received HTTP '+response.status+' ('+type+'). Check deployment protection and API routing.');
   }
   const body = await response.json();
+  if (response.headers.get('cache-control')?.includes('no-store') !== true) throw new Error('Health response must not be cached');
   if (!response.ok || body.ok !== true) {
     throw new Error('Health check failed: HTTP '+response.status+'. Database may be missing, offline, or schema incomplete.');
   }
@@ -19,6 +20,8 @@ try {
     const endpoint=new URL(path,url);
     const result=await fetch(endpoint,{cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(10000)});
     if(result.status!==401)throw new Error('Anonymous endpoint did not return HTTP 401: '+path+' (received '+result.status+')');
+    if (!result.headers.get('content-type')?.includes('application/json')) throw new Error('Protected endpoint returned non-JSON: '+path);
+    if (!result.headers.get('cache-control')?.includes('no-store')) throw new Error('Protected endpoint missing no-store: '+path);
   }
   console.log('Health endpoint and anonymous access guards passed; authenticated write-path E2E tests remain unverified.');
 } catch (error) {
