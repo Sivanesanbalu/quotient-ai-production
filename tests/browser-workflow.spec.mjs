@@ -28,3 +28,5 @@ test('disposable browser signup, RFQ, supplier, quote and logout',async({page})=
   await page.getByRole('button',{name:'Log out'}).click();
   await expect(page.getByRole('heading',{name:'Welcome back'})).toBeVisible();
 });
+
+// Browser flow is intentionally exercised against an isolated CI PostgreSQL service.
