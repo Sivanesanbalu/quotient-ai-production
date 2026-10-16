@@ -15,8 +15,11 @@ test('disposable browser signup, RFQ, supplier, quote and logout',async({page})=
   await expect(page.getByRole('heading',{name:'Procurement dashboard'})).toBeVisible({timeout:10000});
   await page.getByRole('textbox',{name:'Product name'}).fill('Browser QA pH meter');
   await page.getByRole('spinbutton',{name:'Quantity'}).fill('2');
+  const savedRequest=page.waitForResponse(response=>response.url().endsWith('/api/rfqs')&&response.request().method()==='POST');
   await page.getByRole('button',{name:'Save request'}).click();
-  await expect(page.getByText('Browser QA pH meter').first()).toBeVisible();
+  const savedRequestResponse=await savedRequest;
+  expect(savedRequestResponse.status(),await savedRequestResponse.text()).toBe(201);
+  await expect(page.getByText('Browser QA pH meter').first()).toBeVisible({timeout:10000});
   await page.getByRole('button',{name:'Suppliers',exact:true}).click();
   await page.getByRole('textbox',{name:'Company'}).fill('Browser QA Supplier');
   await page.getByRole('button',{name:'Save supplier'}).click();
