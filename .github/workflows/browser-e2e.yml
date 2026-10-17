@@ -4,6 +4,11 @@ on:
     branches: [main]
     paths:
       - 'tests/browser-workflow.spec.mjs'
+      - 'app/**'
+      - 'lib/**'
+      - 'schema.sql'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/browser-e2e.yml'
   workflow_dispatch:
 permissions:
